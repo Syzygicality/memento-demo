@@ -18,6 +18,7 @@ from routers.balances_routes import router as balances_router
 from config.config import settings
 from routers.fx_routes import router as fx_router
 from routers.holds_routes import router as holds_router
+from routers.idempotency_routes import router as idempotency_router
 from routers.outbox_routes import router as outbox_router
 from routers.reconciliation_routes import router as reconciliation_router
 from routers.reversals_routes import router as reversals_router
@@ -63,3 +64,6 @@ def setup_routes(app: FastAPI) -> None:
         reversals_router, prefix=f"{API_PREFIX}/transactions", tags=["reversals"]
     )
     app.include_router(outbox_router, prefix=f"{API_PREFIX}/outbox", tags=["outbox"])
+    app.include_router(
+        idempotency_router, prefix=f"{API_PREFIX}/idempotency", tags=["idempotency"]
+    )

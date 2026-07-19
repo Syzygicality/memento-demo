@@ -104,6 +104,19 @@ per-account journal, decision-anchored change log.
 - Files: `backend/admin/*`
 - Graph: `admin` feature; broad `governs` links across the schema.
 
+### 13. Idempotency key inspection endpoint
+A read-only lookup so support can answer "did this key already run, and what
+will it replay?" without shell access to Postgres — the first slice of the
+admin surface (12), scoped to what the sweeper (11) is about to reclaim.
+- Decisions: exposes stored status/response metadata but never the raw
+  response body over an unauthenticated-by-tenant channel; surfaces
+  `swept_at` computed from the sweeper's `min_age` rather than a stored column,
+  so the two can't drift.
+- Files: `backend/routers/idempotency_routes.py`, `backend/schemas/idempotency_schemas.py`,
+  `backend/services/idempotency_store.py`
+- Graph: extends `idempotency-sweep-min-age`; seeds the `admin` feature hub
+  that item 12 will grow into.
+
 ---
 
 ### How this grows the graph
