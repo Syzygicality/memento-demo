@@ -160,6 +160,8 @@ at a time within the transaction.
 - Feature: postings
 - Files: `backend/postings/engine.py`, `migrations/versions/0002_balance_trigger_and_snapshots.py`
 - PR: #128 · Author: Diego Alvarez · 2026-02-13 · Confidence: high
+- Note: the single table-level attachment is superseded by `posting-partitioning`;
+  the trigger *function* and invariant are unchanged, only its attachment point.
 
 ### `effective-at-distinct-from-created-at` — Backdating uses effective_at, not mutation
 Postings carry an immutable `effective_at` separate from `created_at`, so a
@@ -177,6 +179,21 @@ idempotency record together. A self-committing engine would break that atomicity
 - Feature: postings
 - Files: `backend/postings/engine.py`, `backend/transfers/service.py`
 - PR: #133 · Author: Priya Nair · 2026-02-19 · Confidence: high
+
+### `posting-partitioning` — Hot tables are partitioned by tenant + month; the balance trigger moves per-partition
+`transactions` and `postings` are declared `PARTITION BY LIST (tenant_id)` with a
+per-tenant monthly range on `effective_at`, and every write is steered to its
+`(tenant_id, month)` child by the routing layer. Append-only growth would
+otherwise let a single physical table outgrow its indexes; partitioning keeps a
+tenant's hot month small and lets cold months detach or archive cheaply. The
+balance-check **constraint trigger cannot stay on the partitioned parent** — it
+does not fire for rows routed into children — so it is dropped from the parent and
+re-installed per child at child-creation time. The trigger function and the
+zero-sum invariant are unchanged; only the attachment point moves.
+- Feature: postings
+- Files: `backend/data/database/partitioning.py`, `migrations/versions/0006_partition_postings.py`
+- PR: #191 · Author: Priya Nair · 2026-07-19 · Confidence: high
+- Supersedes: `balance-trigger`
 
 ---
 
