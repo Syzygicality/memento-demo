@@ -11,10 +11,18 @@ inside a single caller-provided session/transaction, so either the whole entry
 lands or none of it does. The engine never opens its own transaction — the
 service layer owns the boundary so a transfer's idempotency record commits with
 the posting (see DECISIONS.md → idempotency-same-transaction).
+
+It also writes exactly one ``OutboxEvent`` per transaction, in that same
+uncommitted session, so a durable "this transaction happened" record can never
+exist without the transaction it describes, or vice versa (see DECISIONS.md →
+outbox-same-transaction). This is the only place that enqueues an outbox event —
+every caller (transfers, holds, fx) goes through ``post_transaction``, so every
+committed transaction gets one for free.
 """
 
 from __future__ import annotations
 
+import json
 import uuid
 from dataclasses import dataclass
 from datetime import datetime
@@ -23,6 +31,7 @@ from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from data.tables.balances import AccountBalance
+from data.tables.outbox import OutboxEvent
 from data.tables.transactions import Posting, Transaction
 from money.types import Minor
 
@@ -78,7 +87,44 @@ async def post_transaction(
         await session.flush()
         await _apply_to_snapshot(session, tenant_id, spec, posting.id)
 
+    await _enqueue_outbox_event(session, tenant_id, txn, specs)
     return txn
+
+
+async def _enqueue_outbox_event(
+    session: AsyncSession,
+    tenant_id: str,
+    txn: Transaction,
+    specs: list[PostingSpec],
+) -> None:
+    """Write the durable event for ``txn`` in the caller's open transaction.
+
+    The payload is a self-contained summary (no later join against ``postings``
+    required to deliver it), which is what lets a downstream consumer replay
+    from the outbox alone.
+    """
+    payload = {
+        "transaction_id": str(txn.id),
+        "tenant_id": tenant_id,
+        "memo": txn.memo,
+        "corrects_id": str(txn.corrects_id) if txn.corrects_id else None,
+        "postings": [
+            {
+                "account_id": str(spec.account_id),
+                "amount": int(spec.amount),
+                "effective_at": spec.effective_at.isoformat(),
+            }
+            for spec in specs
+        ],
+    }
+    session.add(
+        OutboxEvent(
+            tenant_id=tenant_id,
+            transaction_id=txn.id,
+            event_type="transaction.posted",
+            payload=json.dumps(payload),
+        )
+    )
 
 
 async def _apply_to_snapshot(

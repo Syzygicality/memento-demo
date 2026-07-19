@@ -37,6 +37,7 @@ backend/
 ├── data/                  ← engine, base repository, SQLModel tables
 ├── accounts/              ← chart of accounts (hierarchical, typed by normal balance)
 ├── postings/             ← the append-only double-entry engine (the core)
+├── outbox/                 ← transactional outbox: one durable event per posting
 ├── transfers/             ← idempotent money-movement API
 ├── idempotency/           ← Postgres-backed idempotency store + middleware
 ├── balances/              ← materialized balance snapshots
