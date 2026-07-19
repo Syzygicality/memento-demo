@@ -1,0 +1,34 @@
+# Local stack: Postgres + the Ledger API. The API service reads the repo-root
+# .env and injects a single override so the same .env works on host and in the
+# container (see DECISIONS.md "Compose overrides the DB host, not .env").
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: ledger
+      POSTGRES_PASSWORD: ledger
+      POSTGRES_DB: ledger
+    ports:
+      - "5432:5432"
+    volumes:
+      - ledger_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ledger"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file: .env
+    environment:
+      LEDGER_DATABASE_HOST: host.docker.internal
+    ports:
+      - "8000:8000"
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --app-dir backend
+
+volumes:
+  ledger_pg:
