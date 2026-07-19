@@ -197,6 +197,45 @@ zero-sum invariant are unchanged; only the attachment point moves.
 
 ---
 
+## Outbox & event publishing
+
+### `outbox-same-transaction` — An outbox row commits in the same transaction as its posting
+`post_transaction` writes one `OutboxEvent` alongside the `Transaction` and its
+`Posting` rows, in the caller's still-open session, instead of publishing to a
+broker after commit or relying on CDC off the WAL. A post-commit publish step can
+succeed at the posting and fail at the event (or vice versa), producing a
+transaction with no event or an event for a transaction that never landed;
+writing both in one transaction makes that impossible. CDC was considered and
+rejected for this milestone — it removes the extra write but adds a WAL-tailing
+component and its own lag/ordering concerns, which is more than this stage of
+the product needs.
+- Feature: outbox
+- Files: `backend/postings/engine.py`, `backend/data/tables/outbox.py`
+- PR: #204 · Author: Priya Nair · 2026-07-19 · Confidence: high
+
+### `outbox-at-least-once` — Dispatch is at-least-once; consumers dedupe by event id
+`dispatch_pending` only flips an event to `PUBLISHED` after the (simulated)
+delivery attempt returns, so a crash between "delivered" and "marked published"
+replays that event on the next dispatch. Exactly-once delivery would require a
+distributed transaction with every downstream consumer, which this system does
+not have; at-least-once plus an idempotent consumer (dedupe by `id`) is the
+standard tradeoff for a transactional outbox and matches how `Idempotency-Key`
+already works on the write side.
+- Feature: outbox
+- Files: `backend/outbox/service.py`
+- PR: #204 · Author: Priya Nair · 2026-07-19 · Confidence: high
+
+### `outbox-order-by-sequence` — Delivery order is per-tenant, by (created_at, id)
+`list_events` and `dispatch_pending` both order by `(tenant_id, created_at, id)`,
+matching the order transactions were posted in for that tenant. Global ordering
+across tenants is not guaranteed or needed — each tenant's downstream ledger only
+needs its own events in the order its own transactions happened.
+- Feature: outbox
+- Files: `backend/outbox/service.py`, `backend/data/tables/outbox.py`
+- PR: #204 · Author: Priya Nair · 2026-07-19 · Confidence: high
+
+---
+
 ## Balances
 
 ### `balance-on-read` — Balances are summed from postings on read *(superseded)*
