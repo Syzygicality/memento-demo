@@ -19,6 +19,7 @@ from fx.routes import router as fx_router
 from holds.routes import router as holds_router
 from outbox.routes import router as outbox_router
 from reconciliation.routes import router as reconciliation_router
+from reversals.routes import router as reversals_router
 from statements.routes import router as statements_router
 from transfers.routes import router as transfers_router
 
@@ -56,4 +57,7 @@ def setup_routes(app: FastAPI) -> None:
         tags=["reconciliation"],
     )
     app.include_router(statements_router, prefix=f"{API_PREFIX}/statements", tags=["statements"])
+    app.include_router(
+        reversals_router, prefix=f"{API_PREFIX}/transactions", tags=["reversals"]
+    )
     app.include_router(outbox_router, prefix=f"{API_PREFIX}/outbox", tags=["outbox"])
