@@ -13,6 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from routers.accounts_routes import router as accounts_router
 from api.middleware.request_context import RequestContextMiddleware
+from api.observability import ObservabilityMiddleware
 from routers.balances_routes import router as balances_router
 from config.config import settings
 from routers.fx_routes import router as fx_router
@@ -42,6 +43,7 @@ def setup_middlewares(app: FastAPI) -> None:
         allow_headers=["*"],
     )
     app.add_middleware(RequestContextMiddleware)
+    app.add_middleware(ObservabilityMiddleware)
 
 
 def setup_routes(app: FastAPI) -> None:
