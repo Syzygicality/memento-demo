@@ -214,6 +214,56 @@ releases automatically at commit/rollback.
 - Files: `backend/transfers/locking.py`, `backend/transfers/service.py`
 - PR: #188 · Author: Priya Nair · 2026-04-08 · Confidence: high
 - Supersedes: `transfer-row-lock`
+- Note: its posted-balance funds check is superseded by `available-vs-posted-split`;
+  the advisory-lock mechanism itself is unchanged.
+
+---
+
+## Holds & authorizations
+
+### `hold-is-reservation-not-posting` — A hold reserves funds without a posting
+A hold (authorization) is a row in `holds`, not a posting. Placing a hold writes
+no entry to the append-only ledger and moves no money; it only records that funds
+are reserved. Only a *capture* writes a balanced transaction through the posting
+engine. Modeling a hold as a reservation rather than a posting keeps the ledger
+append-only and every transaction balanced to zero — a reservation is not yet a
+money movement, so it must not appear as one.
+- Feature: holds
+- Files: `backend/data/tables/holds.py`, `backend/holds/service.py`
+- PR: #205 · Author: Priya Nair · 2026-07-19 · Confidence: high
+
+### `available-vs-posted-split` — Funds checks read available, not posted
+Every funds check reads an account's **available** balance — its posted snapshot
+minus the sum of its active, unexpired holds — never the raw posted balance. This
+supersedes the funds check the transfer path used, which compared the posted
+snapshot directly and so could spend money a hold had already reserved. Placing a
+hold and posting a transfer both take the same per-account advisory lock and both
+compare against available, so a reserved amount can be committed at most once.
+- Feature: holds
+- Files: `backend/balances/service.py`, `backend/transfers/service.py`, `backend/holds/service.py`
+- PR: #205 · Author: Priya Nair · 2026-07-19 · Confidence: high
+- Supersedes: `transfer-advisory-lock`
+
+### `hold-expiry-frees-on-read` — An expired hold stops reserving without a sweep
+A hold carries an `expires_at`; the available-balance query counts a hold only
+while it is `ACTIVE` **and** `expires_at > now()`, judged by the database clock.
+An expired hold therefore stops reducing available the instant it lapses, with no
+sweeper having to run — a background sweep can reclaim the rows later for tidiness,
+but correctness never depends on it having run. Deciding expiry at read time is
+what makes the reservation self-releasing and race-free.
+- Feature: holds
+- Files: `backend/data/tables/holds.py`, `backend/balances/service.py`, `backend/config/config.py`
+- PR: #205 · Author: Priya Nair · 2026-07-19 · Confidence: medium
+
+### `hold-capture-idempotent-by-state` — Capture is idempotent by the hold's terminal state
+A hold captures at most once. Capture and release act on a specific hold id and
+derive their idempotency from the hold's state rather than an `Idempotency-Key`
+header: capturing an already-`CAPTURED` hold replays the stored result instead of
+posting a second transaction, and releasing an already-`RELEASED` hold is a no-op.
+Placement, which mints a new hold, keeps the header-based key like a transfer.
+- Feature: holds
+- Files: `backend/holds/service.py`, `backend/holds/routes.py`
+- PR: #205 · Author: Priya Nair · 2026-07-19 · Confidence: medium
 
 ---
 

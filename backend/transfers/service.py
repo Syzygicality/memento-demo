@@ -7,7 +7,10 @@ credit leg) committed atomically with its idempotency record. The flow:
 1. Look up the idempotency key; replay the stored result if present.
 2. Take a per-account advisory lock on the source so concurrent transfers can't
    both pass the funds check.
-3. Verify sufficient funds against the (locked) source snapshot.
+3. Verify sufficient *available* funds against the (locked) source — posted
+   balance minus anything reserved by active holds, so a transfer can never
+   spend funds a hold has already reserved (see DECISIONS.md →
+   available-vs-posted-split, which superseded the raw-posted funds check).
 4. Post the balanced transaction, folding both snapshots.
 5. Record the idempotency result — in the same transaction — and commit.
 
@@ -21,6 +24,7 @@ from datetime import datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from balances.service import available_balance
 from data.tables.accounts import Account
 from data.tables.balances import AccountBalance
 from idempotency import store
@@ -58,10 +62,12 @@ async def execute_transfer(
         raise CurrencyMismatchError("cross-currency transfer requires a conversion account")
 
     async with account_lock(session, req.source_account_id):
-        src_balance = await _balance(session, tenant_id, req.source_account_id)
-        if src_balance.balance < req.amount:
+        src_balance = await available_balance(session, tenant_id, req.source_account_id)
+        if src_balance is None:
+            raise InsufficientFundsError(f"no balance snapshot for {req.source_account_id}")
+        if src_balance.available < req.amount:
             raise InsufficientFundsError(
-                f"balance {src_balance.balance} < requested {req.amount}"
+                f"available {src_balance.available} < requested {req.amount}"
             )
 
         effective_at = req.effective_at or datetime.now()

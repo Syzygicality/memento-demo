@@ -10,6 +10,7 @@ from __future__ import annotations
 from data.tables import (  # noqa: F401
     accounts,
     balances,
+    holds,
     idempotency,
     reconciliation,
     transactions,
