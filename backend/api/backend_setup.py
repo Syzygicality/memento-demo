@@ -15,6 +15,7 @@ from accounts.routes import router as accounts_router
 from api.middleware.request_context import RequestContextMiddleware
 from balances.routes import router as balances_router
 from config.config import settings
+from fx.routes import router as fx_router
 from holds.routes import router as holds_router
 from reconciliation.routes import router as reconciliation_router
 from statements.routes import router as statements_router
@@ -46,6 +47,7 @@ def setup_routes(app: FastAPI) -> None:
     app.include_router(accounts_router, prefix=f"{API_PREFIX}/accounts", tags=["accounts"])
     app.include_router(transfers_router, prefix=f"{API_PREFIX}/transfers", tags=["transfers"])
     app.include_router(holds_router, prefix=f"{API_PREFIX}/holds", tags=["holds"])
+    app.include_router(fx_router, prefix=f"{API_PREFIX}/fx", tags=["fx"])
     app.include_router(balances_router, prefix=f"{API_PREFIX}/balances", tags=["balances"])
     app.include_router(
         reconciliation_router,

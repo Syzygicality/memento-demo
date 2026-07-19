@@ -78,14 +78,35 @@ half-up accumulates across aggregate reports.
 - Files: `backend/money/types.py`
 - PR: #158 · Author: Tomás Reyes · 2026-03-06 · Confidence: medium
 
-### `currency-fixed-per-account` — Currency is fixed per account; no implicit FX
-An account's currency is captured at creation and never changes. Cross-currency
-transfers are rejected outright; moving value across currencies must route
-through explicit conversion accounts. Implicit FX inside a transfer would bury an
-exchange-rate decision inside a money movement, so it is disallowed.
+### `currency-fixed-per-account` — Currency is fixed per account; no implicit FX *(partially superseded)*
+An account's currency is captured at creation and never changes — this half
+still holds. The *reject cross-currency outright* half does not: moving value
+across currencies now routes through explicit conversion accounts at a resolved,
+provenance-tagged rate rather than being refused. The original concern — that
+implicit FX would bury an exchange-rate decision inside a money movement — is met
+not by rejection but by making the rate and its two legs explicit and auditable.
 - Feature: accounts
 - Files: `backend/money/types.py`, `backend/data/tables/accounts.py`, `backend/transfers/service.py`
 - PR: #167 · Author: Diego Alvarez · 2026-03-13 · Confidence: high
+- Superseded-by: `fx-conversion-accounts`
+
+### `fx-conversion-accounts` — Cross-currency movement routes through conversion accounts
+A cross-currency transfer is no longer rejected. It splits into two
+single-currency legs at a pair of platform-owned **conversion accounts** (one per
+currency): the source is debited in its own currency against `conversion:<src>`,
+and `conversion:<dst>` is debited to credit the destination in *its* currency.
+Each leg balances to zero on its own, so the per-transaction balance trigger is
+never violated, and the FX position lands in the conversion accounts as an
+explicit, auditable amount rather than being buried inside one transaction. The
+rate is resolved from the append-only `fx_rates` table at the movement's
+`effective_at` (direct pair, else reciprocal of the inverse) and its provenance
+is stamped onto each leg's memo. Each leg is rounded once, to its own currency's
+minor units, so the conversion residual is booked, never silently discarded. This
+supersedes `currency-fixed-per-account`'s reject-cross-currency stance.
+- Feature: fx
+- Files: `backend/fx/service.py`, `backend/fx/rates.py`, `backend/data/tables/fx_rates.py`, `backend/money/types.py`, `backend/transfers/service.py`
+- PR: #214 · Author: Diego Alvarez · 2026-07-19 · Confidence: high
+- Supersedes: `currency-fixed-per-account`
 
 ---
 
