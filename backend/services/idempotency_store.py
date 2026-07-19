@@ -79,3 +79,10 @@ async def keys_for_tenant(session: AsyncSession, tenant_id: str) -> list[str]:
         select(IdempotencyRecord.key).where(IdempotencyRecord.tenant_id == tenant_id)
     )
     return [r[0] for r in rows.all()]
+
+
+async def get_record(
+    session: AsyncSession, tenant_id: str, endpoint: str, key: str
+) -> IdempotencyRecord | None:
+    """Return the stored record for a key, or ``None`` if unseen or already swept."""
+    return await session.get(IdempotencyRecord, (tenant_id, endpoint, key))
