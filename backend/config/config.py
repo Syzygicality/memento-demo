@@ -36,6 +36,10 @@ class Settings(BaseSettings):
     idempotency_ttl_hours: int = 48
     idempotency_min_age_minutes: int = 15
 
+    # Default lifetime of a hold before it stops reserving funds. A hold with no
+    # explicit expiry expires this many minutes after it is placed.
+    hold_default_ttl_minutes: int = 7 * 24 * 60
+
     database: DatabaseConfig = Field(default_factory=DatabaseConfig)
 
     @property
