@@ -6,7 +6,7 @@ import uuid
 from datetime import date
 
 from data.tables.reconciliation import ExceptionKind
-from reconciliation.matcher import PostingCandidate, match_line
+from services.reconciliation_matcher import PostingCandidate, match_line
 
 
 def _candidate(amount: int, d: date, ref: str = "") -> PostingCandidate:

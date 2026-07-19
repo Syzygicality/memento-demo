@@ -6,9 +6,9 @@ from fastapi import APIRouter, Header, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import SessionDep, TenantDep
-from idempotency.store import IdempotencyConflict
-from transfers.schemas import TransferRequest, TransferResponse
-from transfers.service import (
+from services.idempotency_store import IdempotencyConflict
+from schemas.transfers_schemas import TransferRequest, TransferResponse
+from services.transfers_service import (
     CurrencyMismatchError,
     InsufficientFundsError,
     execute_transfer,

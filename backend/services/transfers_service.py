@@ -23,11 +23,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from data.tables.accounts import Account
 from data.tables.balances import AccountBalance
-from idempotency import store
+from services import idempotency_store as store
 from money.types import Minor, negate
-from postings.engine import PostingSpec, post_transaction
-from transfers.locking import account_lock
-from transfers.schemas import TransferRequest, TransferResponse
+from services.postings_engine import PostingSpec, post_transaction
+from services.transfers_locking import account_lock
+from schemas.transfers_schemas import TransferRequest, TransferResponse
 
 ENDPOINT = "transfers.create"
 

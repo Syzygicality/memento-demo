@@ -7,8 +7,8 @@ import uuid
 from fastapi import APIRouter, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from accounts.schemas import AccountResponse, OpenAccountRequest
-from accounts.service import get_account, open_account
+from schemas.accounts_schemas import AccountResponse, OpenAccountRequest
+from services.accounts_service import get_account, open_account
 from api.deps import SessionDep, TenantDep
 
 router = APIRouter()

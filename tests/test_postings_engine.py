@@ -14,7 +14,7 @@ from datetime import datetime
 import pytest
 
 from money.types import Minor
-from postings.engine import PostingSpec, UnbalancedTransactionError, post_transaction
+from services.postings_engine import PostingSpec, UnbalancedTransactionError, post_transaction
 
 
 class _NeverTouchedSession:

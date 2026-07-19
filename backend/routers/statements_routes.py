@@ -11,7 +11,7 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import SessionDep, TenantDep
-from statements.service import stream_statement
+from services.statements_service import stream_statement
 
 router = APIRouter()
 

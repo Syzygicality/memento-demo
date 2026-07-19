@@ -8,7 +8,7 @@ from fastapi import APIRouter, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import SessionDep, TenantDep
-from balances.service import current_balance
+from services.balances_service import current_balance
 
 router = APIRouter()
 
