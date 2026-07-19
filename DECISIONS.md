@@ -78,14 +78,35 @@ half-up accumulates across aggregate reports.
 - Files: `backend/money/types.py`
 - PR: #158 · Author: Tomás Reyes · 2026-03-06 · Confidence: medium
 
-### `currency-fixed-per-account` — Currency is fixed per account; no implicit FX
-An account's currency is captured at creation and never changes. Cross-currency
-transfers are rejected outright; moving value across currencies must route
-through explicit conversion accounts. Implicit FX inside a transfer would bury an
-exchange-rate decision inside a money movement, so it is disallowed.
+### `currency-fixed-per-account` — Currency is fixed per account; no implicit FX *(partially superseded)*
+An account's currency is captured at creation and never changes — this half
+still holds. The *reject cross-currency outright* half does not: moving value
+across currencies now routes through explicit conversion accounts at a resolved,
+provenance-tagged rate rather than being refused. The original concern — that
+implicit FX would bury an exchange-rate decision inside a money movement — is met
+not by rejection but by making the rate and its two legs explicit and auditable.
 - Feature: accounts
 - Files: `backend/money/types.py`, `backend/data/tables/accounts.py`, `backend/transfers/service.py`
 - PR: #167 · Author: Diego Alvarez · 2026-03-13 · Confidence: high
+- Superseded-by: `fx-conversion-accounts`
+
+### `fx-conversion-accounts` — Cross-currency movement routes through conversion accounts
+A cross-currency transfer is no longer rejected. It splits into two
+single-currency legs at a pair of platform-owned **conversion accounts** (one per
+currency): the source is debited in its own currency against `conversion:<src>`,
+and `conversion:<dst>` is debited to credit the destination in *its* currency.
+Each leg balances to zero on its own, so the per-transaction balance trigger is
+never violated, and the FX position lands in the conversion accounts as an
+explicit, auditable amount rather than being buried inside one transaction. The
+rate is resolved from the append-only `fx_rates` table at the movement's
+`effective_at` (direct pair, else reciprocal of the inverse) and its provenance
+is stamped onto each leg's memo. Each leg is rounded once, to its own currency's
+minor units, so the conversion residual is booked, never silently discarded. This
+supersedes `currency-fixed-per-account`'s reject-cross-currency stance.
+- Feature: fx
+- Files: `backend/fx/service.py`, `backend/fx/rates.py`, `backend/data/tables/fx_rates.py`, `backend/money/types.py`, `backend/transfers/service.py`
+- PR: #214 · Author: Diego Alvarez · 2026-07-19 · Confidence: high
+- Supersedes: `currency-fixed-per-account`
 
 ---
 
@@ -139,6 +160,8 @@ at a time within the transaction.
 - Feature: postings
 - Files: `backend/postings/engine.py`, `migrations/versions/0002_balance_trigger_and_snapshots.py`
 - PR: #128 · Author: Diego Alvarez · 2026-02-13 · Confidence: high
+- Note: the single table-level attachment is superseded by `posting-partitioning`;
+  the trigger *function* and invariant are unchanged, only its attachment point.
 
 ### `effective-at-distinct-from-created-at` — Backdating uses effective_at, not mutation
 Postings carry an immutable `effective_at` separate from `created_at`, so a
@@ -156,6 +179,60 @@ idempotency record together. A self-committing engine would break that atomicity
 - Feature: postings
 - Files: `backend/postings/engine.py`, `backend/transfers/service.py`
 - PR: #133 · Author: Priya Nair · 2026-02-19 · Confidence: high
+
+### `posting-partitioning` — Hot tables are partitioned by tenant + month; the balance trigger moves per-partition
+`transactions` and `postings` are declared `PARTITION BY LIST (tenant_id)` with a
+per-tenant monthly range on `effective_at`, and every write is steered to its
+`(tenant_id, month)` child by the routing layer. Append-only growth would
+otherwise let a single physical table outgrow its indexes; partitioning keeps a
+tenant's hot month small and lets cold months detach or archive cheaply. The
+balance-check **constraint trigger cannot stay on the partitioned parent** — it
+does not fire for rows routed into children — so it is dropped from the parent and
+re-installed per child at child-creation time. The trigger function and the
+zero-sum invariant are unchanged; only the attachment point moves.
+- Feature: postings
+- Files: `backend/data/database/partitioning.py`, `migrations/versions/0006_partition_postings.py`
+- PR: #191 · Author: Priya Nair · 2026-07-19 · Confidence: high
+- Supersedes: `balance-trigger`
+
+---
+
+## Outbox & event publishing
+
+### `outbox-same-transaction` — An outbox row commits in the same transaction as its posting
+`post_transaction` writes one `OutboxEvent` alongside the `Transaction` and its
+`Posting` rows, in the caller's still-open session, instead of publishing to a
+broker after commit or relying on CDC off the WAL. A post-commit publish step can
+succeed at the posting and fail at the event (or vice versa), producing a
+transaction with no event or an event for a transaction that never landed;
+writing both in one transaction makes that impossible. CDC was considered and
+rejected for this milestone — it removes the extra write but adds a WAL-tailing
+component and its own lag/ordering concerns, which is more than this stage of
+the product needs.
+- Feature: outbox
+- Files: `backend/postings/engine.py`, `backend/data/tables/outbox.py`
+- PR: #204 · Author: Priya Nair · 2026-07-19 · Confidence: high
+
+### `outbox-at-least-once` — Dispatch is at-least-once; consumers dedupe by event id
+`dispatch_pending` only flips an event to `PUBLISHED` after the (simulated)
+delivery attempt returns, so a crash between "delivered" and "marked published"
+replays that event on the next dispatch. Exactly-once delivery would require a
+distributed transaction with every downstream consumer, which this system does
+not have; at-least-once plus an idempotent consumer (dedupe by `id`) is the
+standard tradeoff for a transactional outbox and matches how `Idempotency-Key`
+already works on the write side.
+- Feature: outbox
+- Files: `backend/outbox/service.py`
+- PR: #204 · Author: Priya Nair · 2026-07-19 · Confidence: high
+
+### `outbox-order-by-sequence` — Delivery order is per-tenant, by (created_at, id)
+`list_events` and `dispatch_pending` both order by `(tenant_id, created_at, id)`,
+matching the order transactions were posted in for that tenant. Global ordering
+across tenants is not guaranteed or needed — each tenant's downstream ledger only
+needs its own events in the order its own transactions happened.
+- Feature: outbox
+- Files: `backend/outbox/service.py`, `backend/data/tables/outbox.py`
+- PR: #204 · Author: Priya Nair · 2026-07-19 · Confidence: high
 
 ---
 
@@ -214,6 +291,56 @@ releases automatically at commit/rollback.
 - Files: `backend/transfers/locking.py`, `backend/transfers/service.py`
 - PR: #188 · Author: Priya Nair · 2026-04-08 · Confidence: high
 - Supersedes: `transfer-row-lock`
+- Note: its posted-balance funds check is superseded by `available-vs-posted-split`;
+  the advisory-lock mechanism itself is unchanged.
+
+---
+
+## Holds & authorizations
+
+### `hold-is-reservation-not-posting` — A hold reserves funds without a posting
+A hold (authorization) is a row in `holds`, not a posting. Placing a hold writes
+no entry to the append-only ledger and moves no money; it only records that funds
+are reserved. Only a *capture* writes a balanced transaction through the posting
+engine. Modeling a hold as a reservation rather than a posting keeps the ledger
+append-only and every transaction balanced to zero — a reservation is not yet a
+money movement, so it must not appear as one.
+- Feature: holds
+- Files: `backend/data/tables/holds.py`, `backend/holds/service.py`
+- PR: #205 · Author: Priya Nair · 2026-07-19 · Confidence: high
+
+### `available-vs-posted-split` — Funds checks read available, not posted
+Every funds check reads an account's **available** balance — its posted snapshot
+minus the sum of its active, unexpired holds — never the raw posted balance. This
+supersedes the funds check the transfer path used, which compared the posted
+snapshot directly and so could spend money a hold had already reserved. Placing a
+hold and posting a transfer both take the same per-account advisory lock and both
+compare against available, so a reserved amount can be committed at most once.
+- Feature: holds
+- Files: `backend/balances/service.py`, `backend/transfers/service.py`, `backend/holds/service.py`
+- PR: #205 · Author: Priya Nair · 2026-07-19 · Confidence: high
+- Supersedes: `transfer-advisory-lock`
+
+### `hold-expiry-frees-on-read` — An expired hold stops reserving without a sweep
+A hold carries an `expires_at`; the available-balance query counts a hold only
+while it is `ACTIVE` **and** `expires_at > now()`, judged by the database clock.
+An expired hold therefore stops reducing available the instant it lapses, with no
+sweeper having to run — a background sweep can reclaim the rows later for tidiness,
+but correctness never depends on it having run. Deciding expiry at read time is
+what makes the reservation self-releasing and race-free.
+- Feature: holds
+- Files: `backend/data/tables/holds.py`, `backend/balances/service.py`, `backend/config/config.py`
+- PR: #205 · Author: Priya Nair · 2026-07-19 · Confidence: medium
+
+### `hold-capture-idempotent-by-state` — Capture is idempotent by the hold's terminal state
+A hold captures at most once. Capture and release act on a specific hold id and
+derive their idempotency from the hold's state rather than an `Idempotency-Key`
+header: capturing an already-`CAPTURED` hold replays the stored result instead of
+posting a second transaction, and releasing an already-`RELEASED` hold is a no-op.
+Placement, which mints a new hold, keeps the header-based key like a transfer.
+- Feature: holds
+- Files: `backend/holds/service.py`, `backend/holds/routes.py`
+- PR: #205 · Author: Priya Nair · 2026-07-19 · Confidence: medium
 
 ---
 

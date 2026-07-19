@@ -74,3 +74,22 @@ def round_minor(value: Decimal, currency: Currency) -> Minor:
     exp = _EXPONENT[currency]
     scaled = (value * (Decimal(10) ** exp)).quantize(Decimal(1), rounding=ROUND_HALF_EVEN)
     return Minor(int(scaled))
+
+
+def convert(
+    amount: Minor, source: Currency, target: Currency, rate: Decimal
+) -> Minor:
+    """Convert ``amount`` from ``source`` into ``target`` at ``rate``.
+
+    ``rate`` is expressed as target-per-source major units (e.g. 0.92 EUR per
+    USD). The amount is lifted to a presentation ``Decimal``, scaled, and rounded
+    back to the *target* currency's minor units with banker's rounding — the same
+    single rounding step used everywhere money crosses the decimal boundary, so a
+    conversion cannot accumulate a directional bias. The rounding residual is the
+    caller's to book into a conversion account; this function never invents or
+    discards value silently (see DECISIONS.md → fx-conversion-accounts).
+    """
+    if source == target:
+        return amount
+    major = to_decimal(amount, source) * rate
+    return round_minor(major, target)

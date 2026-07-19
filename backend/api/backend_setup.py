@@ -15,7 +15,11 @@ from routers.accounts_routes import router as accounts_router
 from api.middleware.request_context import RequestContextMiddleware
 from routers.balances_routes import router as balances_router
 from config.config import settings
+from routers.fx_routes import router as fx_router
+from routers.holds_routes import router as holds_router
+from routers.outbox_routes import router as outbox_router
 from routers.reconciliation_routes import router as reconciliation_router
+from routers.reversals_routes import router as reversals_router
 from routers.statements_routes import router as statements_router
 from routers.transfers_routes import router as transfers_router
 
@@ -44,6 +48,8 @@ def setup_routes(app: FastAPI) -> None:
     """Mount every feature router under the versioned prefix."""
     app.include_router(accounts_router, prefix=f"{API_PREFIX}/accounts", tags=["accounts"])
     app.include_router(transfers_router, prefix=f"{API_PREFIX}/transfers", tags=["transfers"])
+    app.include_router(holds_router, prefix=f"{API_PREFIX}/holds", tags=["holds"])
+    app.include_router(fx_router, prefix=f"{API_PREFIX}/fx", tags=["fx"])
     app.include_router(balances_router, prefix=f"{API_PREFIX}/balances", tags=["balances"])
     app.include_router(
         reconciliation_router,
@@ -51,3 +57,7 @@ def setup_routes(app: FastAPI) -> None:
         tags=["reconciliation"],
     )
     app.include_router(statements_router, prefix=f"{API_PREFIX}/statements", tags=["statements"])
+    app.include_router(
+        reversals_router, prefix=f"{API_PREFIX}/transactions", tags=["reversals"]
+    )
+    app.include_router(outbox_router, prefix=f"{API_PREFIX}/outbox", tags=["outbox"])
