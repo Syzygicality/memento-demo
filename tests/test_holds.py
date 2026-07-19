@@ -20,16 +20,16 @@ pytest.importorskip("pytest_postgresql")
 from alembic import command  # noqa: E402
 from alembic.config import Config  # noqa: E402
 
-from balances.service import available_balance  # noqa: E402
+from services.balances_service import available_balance  # noqa: E402
 from data.tables.accounts import Account, NormalBalance  # noqa: E402
 from data.tables.balances import AccountBalance  # noqa: E402
 from data.tables.holds import Hold, HoldState  # noqa: E402
 from data.tables.transactions import Transaction  # noqa: E402
-from holds.schemas import CaptureHoldRequest, PlaceHoldRequest  # noqa: E402
-from holds.service import capture_hold, place_hold, release_hold  # noqa: E402
+from schemas.holds_schemas import CaptureHoldRequest, PlaceHoldRequest  # noqa: E402
+from services.holds_service import capture_hold, place_hold, release_hold  # noqa: E402
 from money.types import Currency  # noqa: E402
-from transfers.schemas import TransferRequest  # noqa: E402
-from transfers.service import InsufficientFundsError, execute_transfer  # noqa: E402
+from schemas.transfers_schemas import TransferRequest  # noqa: E402
+from services.transfers_service import InsufficientFundsError, execute_transfer  # noqa: E402
 
 
 @pytest.fixture

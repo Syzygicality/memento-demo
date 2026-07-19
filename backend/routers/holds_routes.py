@@ -8,16 +8,16 @@ from fastapi import APIRouter, Header, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import SessionDep, TenantDep
-from holds.schemas import CaptureHoldRequest, HoldResponse, PlaceHoldRequest
-from holds.service import (
+from schemas.holds_schemas import CaptureHoldRequest, HoldResponse, PlaceHoldRequest
+from services.holds_service import (
     HoldNotFoundError,
     HoldStateError,
     capture_hold,
     place_hold,
     release_hold,
 )
-from idempotency.store import IdempotencyConflict
-from transfers.service import CurrencyMismatchError, InsufficientFundsError
+from services.idempotency_store import IdempotencyConflict
+from services.transfers_service import CurrencyMismatchError, InsufficientFundsError
 
 router = APIRouter()
 

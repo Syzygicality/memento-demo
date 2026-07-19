@@ -26,10 +26,10 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from data.tables.transactions import Posting, Transaction
-from idempotency import store
+from services import idempotency_store as store
 from money.types import Minor, negate
-from postings.engine import PostingSpec, post_transaction
-from reversals.schemas import ReversalResponse, ReverseTransactionRequest
+from services.postings_engine import PostingSpec, post_transaction
+from schemas.reversals_schemas import ReversalResponse, ReverseTransactionRequest
 
 REVERSE_ENDPOINT = "reversals.create"
 

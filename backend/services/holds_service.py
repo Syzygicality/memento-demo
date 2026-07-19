@@ -29,16 +29,16 @@ from datetime import datetime, timedelta
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from balances.service import available_balance
+from services.balances_service import available_balance
 from config.config import settings
 from data.tables.accounts import Account
 from data.tables.holds import Hold, HoldState
-from holds.schemas import CaptureHoldRequest, HoldResponse, PlaceHoldRequest
-from idempotency import store
+from schemas.holds_schemas import CaptureHoldRequest, HoldResponse, PlaceHoldRequest
+from services import idempotency_store as store
 from money.types import Minor, negate
-from postings.engine import PostingSpec, post_transaction
-from transfers.locking import account_lock
-from transfers.service import CurrencyMismatchError, InsufficientFundsError
+from services.postings_engine import PostingSpec, post_transaction
+from services.transfers_locking import account_lock
+from services.transfers_service import CurrencyMismatchError, InsufficientFundsError
 
 PLACE_ENDPOINT = "holds.place"
 

@@ -7,8 +7,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import SessionDep, TenantDep
 from data.tables.outbox import OutboxStatus
-from outbox.schemas import DispatchResponse, OutboxEventResponse
-from outbox.service import dispatch_pending, list_events
+from schemas.outbox_schemas import DispatchResponse, OutboxEventResponse
+from services.outbox_service import dispatch_pending, list_events
 
 router = APIRouter()
 

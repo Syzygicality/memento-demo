@@ -11,17 +11,17 @@ from __future__ import annotations
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from accounts.routes import router as accounts_router
+from routers.accounts_routes import router as accounts_router
 from api.middleware.request_context import RequestContextMiddleware
-from balances.routes import router as balances_router
+from routers.balances_routes import router as balances_router
 from config.config import settings
-from fx.routes import router as fx_router
-from holds.routes import router as holds_router
-from outbox.routes import router as outbox_router
-from reconciliation.routes import router as reconciliation_router
-from reversals.routes import router as reversals_router
-from statements.routes import router as statements_router
-from transfers.routes import router as transfers_router
+from routers.fx_routes import router as fx_router
+from routers.holds_routes import router as holds_router
+from routers.outbox_routes import router as outbox_router
+from routers.reconciliation_routes import router as reconciliation_router
+from routers.reversals_routes import router as reversals_router
+from routers.statements_routes import router as statements_router
+from routers.transfers_routes import router as transfers_router
 
 API_PREFIX = "/api/v1"
 

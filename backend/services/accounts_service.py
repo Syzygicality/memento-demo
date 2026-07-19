@@ -12,7 +12,7 @@ import uuid
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from accounts.schemas import AccountResponse, OpenAccountRequest
+from schemas.accounts_schemas import AccountResponse, OpenAccountRequest
 from data.tables.accounts import Account
 from data.tables.balances import AccountBalance
 

@@ -24,9 +24,9 @@ from data.tables.accounts import Account, NormalBalance  # noqa: E402
 from data.tables.balances import AccountBalance  # noqa: E402
 from data.tables.outbox import OutboxEvent, OutboxStatus  # noqa: E402
 from money.types import Currency  # noqa: E402
-from outbox.service import dispatch_pending, list_events  # noqa: E402
-from transfers.schemas import TransferRequest  # noqa: E402
-from transfers.service import execute_transfer  # noqa: E402
+from services.outbox_service import dispatch_pending, list_events  # noqa: E402
+from schemas.transfers_schemas import TransferRequest  # noqa: E402
+from services.transfers_service import execute_transfer  # noqa: E402
 
 
 @pytest.fixture

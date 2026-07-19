@@ -8,9 +8,9 @@ from fastapi import APIRouter, Header, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import SessionDep, TenantDep
-from idempotency.store import IdempotencyConflict
-from reversals.schemas import ReversalResponse, ReverseTransactionRequest
-from reversals.service import (
+from services.idempotency_store import IdempotencyConflict
+from schemas.reversals_schemas import ReversalResponse, ReverseTransactionRequest
+from services.reversals_service import (
     AlreadyReversedError,
     CannotReverseReversalError,
     TransactionNotFoundError,

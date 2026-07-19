@@ -15,8 +15,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import SessionDep, TenantDep
 from data.tables.fx_rates import FxRate
-from fx.rates import RateUnavailableError, resolve_rate
-from fx.schemas import QuoteRequest, QuoteResponse, UpsertRateRequest
+from services.fx_rates import RateUnavailableError, resolve_rate
+from schemas.fx_schemas import QuoteRequest, QuoteResponse, UpsertRateRequest
 from money.types import convert
 
 router = APIRouter()
