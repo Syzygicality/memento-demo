@@ -1,0 +1,39 @@
+# Ledger code ownership.
+#
+# Every PR needs two approving reviewers, one of whom owns a touched path (see
+# DECISIONS.md → branch-and-review-policy). Ownership also feeds Memento's
+# engineer↔feature edges, so keep it accurate.
+
+# Ledger core — the money invariants. A core owner must review any money-path PR.
+/backend/postings/            @diego-alvarez @maya-chen
+/backend/money/               @diego-alvarez @tomas-reyes
+/backend/data/tables/         @diego-alvarez @maya-chen
+
+# Transfers & idempotency
+/backend/transfers/           @priya-nair @diego-alvarez
+/backend/idempotency/         @priya-nair @maya-chen
+
+# Balances & statements
+/backend/balances/            @tomas-reyes @diego-alvarez
+/backend/statements/          @tomas-reyes @maya-chen
+
+# Reconciliation
+/backend/reconciliation/      @sam-okoro @priya-nair
+
+# Accounts
+/backend/accounts/            @diego-alvarez @tomas-reyes
+
+# Platform: config, db engine, api wiring, migrations
+/backend/config/              @lena-fischer @maya-chen
+/backend/api/                 @lena-fischer @maya-chen
+/backend/data/database/       @lena-fischer @diego-alvarez
+/migrations/                  @lena-fischer @diego-alvarez
+
+# Tests & tooling
+/tests/                       @sam-okoro @maya-chen
+/pyproject.toml               @maya-chen @lena-fischer
+
+# Docs & decision record — the tech lead keeps these coherent.
+/DECISIONS.md                 @maya-chen
+/CLAUDE.md                    @maya-chen
+/docs/                        @maya-chen @aiko-tanaka
