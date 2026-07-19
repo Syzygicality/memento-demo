@@ -12,6 +12,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from routers.accounts_routes import router as accounts_router
+from routers.admin_routes import router as admin_router
 from api.middleware.request_context import RequestContextMiddleware
 from api.observability import ObservabilityMiddleware
 from routers.balances_routes import router as balances_router
@@ -67,3 +68,4 @@ def setup_routes(app: FastAPI) -> None:
     app.include_router(
         idempotency_router, prefix=f"{API_PREFIX}/idempotency", tags=["idempotency"]
     )
+    app.include_router(admin_router, prefix=f"{API_PREFIX}/admin", tags=["admin"])
